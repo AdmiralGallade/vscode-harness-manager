@@ -449,7 +449,16 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
       fs.writeFileSync(path.join(cursorRulesDir, 'harness.mdc'), mdcContent, 'utf8');
       log.debug(SCOPE, `Written: ${path.join(cursorRulesDir, 'harness.mdc')}`);
 
-      log.info(SCOPE, `_writePointerFiles("${harness.id}") — all 4 pointer files written`);
+      // ── Windsurf: .windsurfrules + .windsurf/rules/harness.md ───────────
+      fs.writeFileSync(path.join(wsRoot, '.windsurfrules'), fullContent, 'utf8');
+      log.debug(SCOPE, `Written: ${path.join(wsRoot, '.windsurfrules')}`);
+
+      const windsurfRulesDir = path.join(wsRoot, '.windsurf', 'rules');
+      fs.mkdirSync(windsurfRulesDir, { recursive: true });
+      fs.writeFileSync(path.join(windsurfRulesDir, 'harness.md'), fullContent, 'utf8');
+      log.debug(SCOPE, `Written: ${path.join(windsurfRulesDir, 'harness.md')}`);
+
+      log.info(SCOPE, `_writePointerFiles("${harness.id}") — all 6 pointer files written (Claude Code, Copilot, Cursor, Windsurf)`);
     } catch (e) {
       log.error(SCOPE, `_writePointerFiles("${harness.id}") failed`, e);
       vscode.window.showWarningMessage(`Harness installed but could not write AI config files: ${e instanceof Error ? e.message : e}`);
@@ -802,6 +811,8 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
       [path.join(wsRoot, '.github', 'copilot-instructions.md'), placeholder],
       [path.join(wsRoot, '.cursorrules'), placeholder],
       [path.join(wsRoot, '.cursor', 'rules', 'harness.mdc'), mdcPlaceholder],
+      [path.join(wsRoot, '.windsurfrules'), placeholder],
+      [path.join(wsRoot, '.windsurf', 'rules', 'harness.md'), placeholder],
     ];
     for (const [p, content] of files) {
       try {

@@ -1,6 +1,6 @@
 # Harness Manager
 
-A VS Code extension for installing and managing **AI agent harnesses** — pre-built instruction sets that configure Claude Code, GitHub Copilot, and Cursor for specific workflows.
+An extension for **VS Code, Cursor, and Windsurf** for installing and managing **AI agent harnesses** — pre-built instruction sets that configure your AI tools for specific workflows.
 
 ---
 
@@ -8,9 +8,18 @@ A VS Code extension for installing and managing **AI agent harnesses** — pre-b
 
 A harness is a collection of files (prompts, rules, hooks, skills) that tells your AI agent how to behave in a project. Installing one writes configuration files that are automatically picked up by:
 
-- **Claude Code** — `.claude/CLAUDE.md`
-- **GitHub Copilot** — `.github/copilot-instructions.md`
-- **Cursor** — `.cursorrules` and `.cursor/rules/harness.mdc`
+| Tool | File written |
+|---|---|
+| **Claude Code** | `.claude/CLAUDE.md` |
+| **GitHub Copilot** | `.github/copilot-instructions.md` |
+| **Cursor** | `.cursorrules` · `.cursor/rules/harness.mdc` |
+| **Windsurf** | `.windsurfrules` · `.windsurf/rules/harness.md` |
+
+## Compatible editors
+
+- **VS Code** — install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdmiralGallade.harness-manager)
+- **Cursor** — install from the [Open VSX Registry](https://open-vsx.org/extension/AdmiralGallade/harness-manager) or directly via `.vsix`
+- **Windsurf** — install from the [Open VSX Registry](https://open-vsx.org/extension/AdmiralGallade/harness-manager) or directly via `.vsix`
 
 ---
 
