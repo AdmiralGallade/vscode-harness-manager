@@ -1,3 +1,12 @@
-out/
 node_modules/
+dist/
+out/
 *.vsix
+.DS_Store
+*.log
+npm-debug.log*
+*.d.ts
+.idea/
+.vscode/launch.json
+.vscode/settings.json
+.vscode/extensions.json

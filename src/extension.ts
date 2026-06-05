@@ -1,83 +1,66 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
-import { HarnessProvider, HarnessItem } from './harnessProvider';
+import { selectHarnessCommand } from './commands/selectHarness';
+import { refreshHarnessesCommand } from './commands/refreshHarnesses';
+import { GitHubService } from './services/GitHubService';
+import { CacheManager } from './services/CacheManager';
+import { FileSystemManager } from './services/FileSystemManager';
+import { MetadataParser } from './services/MetadataParser';
+import { HarnessSidebarProvider } from './ui/SidebarProvider';
+
+let cacheManager: CacheManager;
+let githubService: GitHubService;
+let fileSystemManager: FileSystemManager;
+let metadataParser: MetadataParser;
+let sidebarProvider: HarnessSidebarProvider;
 
 export function activate(context: vscode.ExtensionContext) {
-  const provider = new HarnessProvider(context);
+  console.log('Harness Manager extension activated');
 
-  const treeView = vscode.window.createTreeView('harnessManagerView', {
-    treeDataProvider: provider,
-    showCollapseAll: false,
+  cacheManager = new CacheManager(context);
+  githubService = new GitHubService(cacheManager);
+  fileSystemManager = new FileSystemManager();
+  metadataParser = new MetadataParser();
+
+  // Register the sidebar webview view provider
+  sidebarProvider = new HarnessSidebarProvider(context, githubService, fileSystemManager);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(HarnessSidebarProvider.viewType, sidebarProvider, {
+      webviewOptions: { retainContextWhenHidden: true },
+    })
+  );
+
+  // Register commands
+  const commands: { id: string; handler: (...args: any[]) => any }[] = [
+    {
+      id: 'harness-manager.selectHarness',
+      handler: () => selectHarnessCommand(context, githubService, cacheManager, fileSystemManager, metadataParser),
+    },
+    {
+      id: 'harness-manager.refreshList',
+      handler: () => {
+        refreshHarnessesCommand(githubService, cacheManager);
+        sidebarProvider.refresh();
+      },
+    },
+    {
+      id: 'harness-manager.openSettings',
+      handler: () => vscode.commands.executeCommand('workbench.action.openSettings', 'harnessManager'),
+    },
+  ];
+
+  for (const { id, handler } of commands) {
+    context.subscriptions.push(vscode.commands.registerCommand(id, handler));
+  }
+
+  vscode.workspace.onDidChangeConfiguration((e) => {
+    if (e.affectsConfiguration('harnessManager')) {
+      githubService = new GitHubService(cacheManager);
+      sidebarProvider.refresh();
+      vscode.window.showInformationMessage('Harness Manager configuration updated');
+    }
   });
-
-  context.subscriptions.push(treeView);
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('harnessManager.refresh', () => {
-      provider.refresh();
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('harnessManager.activateHarness', async (item: HarnessItem) => {
-      const config = vscode.workspace.getConfiguration('harnessManager');
-      await config.update('activeHarness', item.harness.name, vscode.ConfigurationTarget.Workspace);
-      provider.refresh();
-      vscode.window.showInformationMessage(`Activated harness: ${item.harness.name}`);
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('harnessManager.openHarness', async (item: HarnessItem) => {
-      const fileToOpen = item.harness.templateFile ?? item.harness.configFile;
-      if (fileToOpen) {
-        const doc = await vscode.workspace.openTextDocument(fileToOpen);
-        await vscode.window.showTextDocument(doc);
-      } else {
-        vscode.window.showWarningMessage(`No file found for harness: ${item.harness.name}`);
-      }
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('harnessManager.addHarnessDirectory', async () => {
-      const result = await vscode.window.showOpenDialog({
-        canSelectFolders: true,
-        canSelectFiles: false,
-        canSelectMany: false,
-        openLabel: 'Select Harness Directory',
-      });
-
-      if (!result || result.length === 0) {
-        return;
-      }
-
-      const selectedPath = result[0].fsPath;
-      const config = vscode.workspace.getConfiguration('harnessManager');
-      const existing: string[] = config.get('harnessPaths') ?? [];
-
-      if (!existing.includes(selectedPath)) {
-        await config.update(
-          'harnessPaths',
-          [...existing, selectedPath],
-          vscode.ConfigurationTarget.Workspace
-        );
-        provider.refresh();
-        vscode.window.showInformationMessage(`Added harness directory: ${path.basename(selectedPath)}`);
-      } else {
-        vscode.window.showInformationMessage('Directory is already in the harness paths.');
-      }
-    })
-  );
-
-  // Refresh when workspace config changes
-  context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration(e => {
-      if (e.affectsConfiguration('harnessManager')) {
-        provider.refresh();
-      }
-    })
-  );
 }
 
-export function deactivate() {}
+export function deactivate() {
+  console.log('Harness Manager extension deactivated');
+}

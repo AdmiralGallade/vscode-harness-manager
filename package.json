@@ -1,124 +1,147 @@
 {
-  "name": "vscode-harness-manager",
+  "name": "harness-manager",
   "displayName": "Harness Manager",
-  "description": "Switch between Claude Code harnesses instantly from the VS Code activity bar",
+  "description": "Manage harnesses for your projects with simple UI-based selection and creation",
   "version": "0.1.0",
-  "engines": {
-    "vscode": "^1.85.0"
+  "publisher": "AdmiralGallade",
+  "author": {
+    "name": "Harness Team"
   },
-  "categories": ["Other"],
-  "keywords": ["harness", "claude", "claude-code"],
-  "activationEvents": ["onStartupFinished"],
-  "main": "./out/extension.js",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AdmiralGallade/vscode-harness-manager"
+  },
+  "bugs": {
+    "url": "https://github.com/AdmiralGallade/vscode-harness-manager/issues"
+  },
+  "homepage": "https://github.com/AdmiralGallade/vscode-harness-manager",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Project Management",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
   "contributes": {
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "harnessManager",
-          "title": "Harness Manager",
-          "icon": "resources/harness.svg"
-        }
-      ]
-    },
-    "views": {
-      "harnessManager": [
-        {
-          "id": "harnessManagerView",
-          "name": "Harnesses",
-          "icon": "resources/harness.svg"
-        }
-      ]
-    },
     "commands": [
       {
-        "command": "harnessManager.refresh",
-        "title": "Refresh",
+        "command": "harness-manager.selectHarness",
+        "title": "Select and Create Harness",
+        "category": "Harness Manager"
+      },
+      {
+        "command": "harness-manager.refreshList",
+        "title": "Refresh Harness List",
+        "category": "Harness Manager",
         "icon": "$(refresh)"
       },
       {
-        "command": "harnessManager.activateHarness",
-        "title": "Activate Harness",
-        "icon": "$(play)"
-      },
-      {
-        "command": "harnessManager.openHarness",
-        "title": "Open Harness File",
-        "icon": "$(go-to-file)"
-      },
-      {
-        "command": "harnessManager.addHarnessDirectory",
-        "title": "Add Harness Directory",
-        "icon": "$(add)"
+        "command": "harness-manager.openSettings",
+        "title": "Open Harness Manager Settings",
+        "category": "Harness Manager",
+        "icon": "$(settings-gear)"
       }
     ],
+    "views": {
+      "harness-manager": [
+        {
+          "id": "harness-manager.harnessExplorer",
+          "name": "Harnesses",
+          "type": "webview"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "harness-manager",
+          "title": "Harness Manager",
+          "icon": "media/harness-icon.png"
+        }
+      ]
+    },
     "menus": {
       "view/title": [
         {
-          "command": "harnessManager.refresh",
-          "when": "view == harnessManagerView",
-          "group": "navigation"
+          "command": "harness-manager.refreshList",
+          "when": "view == harness-manager.harnessExplorer",
+          "group": "navigation@1"
         },
         {
-          "command": "harnessManager.addHarnessDirectory",
-          "when": "view == harnessManagerView",
-          "group": "navigation"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "harnessManager.activateHarness",
-          "when": "view == harnessManagerView && viewItem == harness",
-          "group": "inline"
-        },
-        {
-          "command": "harnessManager.openHarness",
-          "when": "view == harnessManagerView && viewItem == harness",
-          "group": "inline"
+          "command": "harness-manager.openSettings",
+          "when": "view == harness-manager.harnessExplorer",
+          "group": "navigation@2"
         }
       ]
     },
     "configuration": {
       "title": "Harness Manager",
       "properties": {
-        "harnessManager.harnessPaths": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [],
-          "description": "Additional directories to scan for harnesses (in addition to the workspace root)"
+        "harnessManager.githubRepo": {
+          "type": "string",
+          "default": "AdmiralGallade/harness-repository",
+          "description": "GitHub repository containing harness definitions (format: owner/repo)"
         },
-        "harnessManager.activeHarness": {
+        "harnessManager.cacheRefreshInterval": {
+          "type": "number",
+          "default": 86400000,
+          "description": "Cache refresh interval in milliseconds (default: 24 hours)"
+        },
+        "harnessManager.defaultCreateLocation": {
+          "type": "string",
+          "enum": [
+            "workspace-root",
+            "prompt"
+          ],
+          "default": "workspace-root",
+          "description": "Where to create harness files by default"
+        },
+        "harnessManager.activeHarnessId": {
           "type": "string",
           "default": "",
-          "description": "The currently active harness name"
-        },
-        "harnessManager.autoScanWorkspace": {
-          "type": "boolean",
-          "default": true,
-          "description": "Automatically scan the workspace root for harness directories"
-        },
-        "harnessManager.harnessFilePattern": {
-          "type": "string",
-          "default": "template.yaml",
-          "description": "Filename that identifies a harness directory (e.g. template.yaml)"
+          "description": "ID of the currently active harness (set automatically when a harness is installed)"
         }
       }
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "esbuild": "npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile",
-    "lint": "eslint src"
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "vsce:package": "vsce package"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
-    "@types/node": "^20.0.0",
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
-    "eslint": "^8.0.0",
-    "typescript": "^5.3.0"
+    "@types/jest": "^29.5.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vscode/test-electron": "^2.3.2",
+    "@vscode/vsce": "^2.20.0",
+    "esbuild": "^0.18.0",
+    "eslint": "^8.40.0",
+    "jest": "^29.5.0",
+    "mocha": "^10.2.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.0.2"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "octokit": "^2.0.14"
   }
 }
