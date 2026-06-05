@@ -19,3 +19,5 @@ node_modules/**
 jest.config.js
 tsconfig.json
 SETUP.md
+.env
+.env.*

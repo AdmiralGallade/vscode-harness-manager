@@ -2,7 +2,7 @@
   "name": "harness-manager",
   "displayName": "Harness Manager",
   "description": "Manage harnesses for your projects with simple UI-based selection and creation",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "AdmiralGallade",
   "author": {
     "name": "Harness Team"
