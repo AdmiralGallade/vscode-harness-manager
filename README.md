@@ -1,190 +1,104 @@
-# Harness Manager VS Code Extension
+# Harness Manager
 
-Simple, authentication-free VS Code extension for managing harnesses and bootstrapping projects.
+A VS Code extension for installing and managing **AI agent harnesses** — pre-built instruction sets that configure Claude Code, GitHub Copilot, and Cursor for specific workflows.
+
+---
+
+## What is a harness?
+
+A harness is a collection of files (prompts, rules, hooks, skills) that tells your AI agent how to behave in a project. Installing one writes configuration files that are automatically picked up by:
+
+- **Claude Code** — `.claude/CLAUDE.md`
+- **GitHub Copilot** — `.github/copilot-instructions.md`
+- **Cursor** — `.cursorrules` and `.cursor/rules/harness.mdc`
+
+---
 
 ## Features
 
-- **No Authentication Required**: Browse and select harnesses without GitHub login
-- **Quick Selection UI**: Use Quick Pick for fast harness discovery
-- **Rich Preview**: View detailed harness information in a Webview panel
-- **Tree Explorer**: Browse harnesses organized by category
-- **Smart Caching**: Local caching with configurable refresh intervals
-- **Automatic File Creation**: Create harness templates directly in your workspace
+- **Browse harnesses** from a GitHub repository, grouped by category
+- **Install with one click** — files are copied into `agent-harnesses/` with full directory structure preserved
+- **Star harnesses** to pin them above the list for quick access
+- **Focus mode** — collapse everything except your starred harnesses
+- **Active section** — all installed harnesses are pinned at the top
+- **Multi-harness support** — optionally keep several harnesses installed side by side
+- **Import** a harness from a local folder or ZIP file
+- **Version history** — every install or switch creates an automatic backup; restore any previous state with one click
+- **Remove** any installed harness (backup is saved first)
+- **Search** the full list, or only your starred harnesses in focus mode
+- **Use your own repository** — point the extension at any public GitHub repo that follows the harness format
 
-## Installation
+---
 
-1. Clone this repository
-2. Run `npm install`
-3. Press F5 to launch the extension in debug mode
+## Getting Started
 
-## Configuration
+1. Install the extension from the VS Code Marketplace
+2. Open a folder in VS Code
+3. Click the **Harness Manager** icon in the activity bar
+4. Click **Install** on any harness
+5. The harness is copied into `agent-harnesses/` and your AI config files are updated immediately
 
-Configure the extension in VS Code Settings (`Ctrl+,` or `Cmd+,`):
+---
 
-### `harnessManager.githubRepo`
-- **Type**: `string`
-- **Default**: `AdmiralGallade/harness-repository`
-- **Description**: GitHub repository containing harness definitions (format: `owner/repo`)
-
-### `harnessManager.cacheRefreshInterval`
-- **Type**: `number`
-- **Default**: `86400000` (24 hours)
-- **Description**: Cache refresh interval in milliseconds
-
-### `harnessManager.defaultCreateLocation`
-- **Type**: `string`
-- **Options**: `workspace-root` | `prompt`
-- **Default**: `workspace-root`
-- **Description**: Where to create harness files by default
-
-## Commands
-
-### `harness-manager.selectHarness`
-Select and create a harness in your workspace.
-- Opens Quick Pick for harness selection
-- Fetches harness files from GitHub
-- Creates files in the workspace
-- Opens the first file in editor
-
-### `harness-manager.refreshList`
-Manually refresh the cached harnesses list from GitHub.
-
-### `harness-manager.openSettings`
-Open Harness Manager settings.
-
-### `harness-manager.viewHarnessDetails`
-View detailed information about a harness in a Webview panel.
-
-## Architecture
-
-### Core Services
-
-**GitHubService**
-- Fetches harness definitions from GitHub
-- Handles GitHub API requests
-- No authentication required (works with public repos)
-
-**CacheManager**
-- Caches harness data locally
-- Manages cache expiration
-- Allows manual cache refresh
-
-**FileSystemManager**
-- Creates files in workspace
-- Handles file I/O operations
-- Manages directory creation
-
-**MetadataParser**
-- Parses harness metadata
-- Filters and searches harnesses
-- Builds dependency trees
-- Converts between JSON and YAML
-
-### UI Components
-
-**QuickPickUI**
-- Fast command-palette style selection
-- Search and filter support
-- Tag and category selection
-
-**WebviewPanel**
-- Rich HTML5 UI for harness details
-- Displays metadata, dependencies, and files
-- VS Code theme integration
-
-**TreeViewProvider**
-- Sidebar explorer view
-- Organize harnesses by category
-- Quick navigation
-
-## Development
-
-### Build
-
-```bash
-npm run compile    # Compile TypeScript
-npm run esbuild    # Bundle with esbuild
-npm run watch      # Watch mode
-```
-
-### Testing
-
-```bash
-npm run lint       # Run ESLint
-npm run test       # Run tests
-```
-
-### Debug
-
-1. Press F5 in VS Code
-2. A new VS Code window opens with the extension loaded
-3. Use the Harness Manager commands
-
-## Project Structure
+## Sidebar Layout
 
 ```
-src/
-├── commands/           # Command handlers
-│   ├── selectHarness.ts
-│   └── refreshHarnesses.ts
-├── services/           # Core business logic
-│   ├── GitHubService.ts
-│   ├── CacheManager.ts
-│   ├── FileSystemManager.ts
-│   └── MetadataParser.ts
-├── ui/                 # UI components
-│   ├── QuickPickUI.ts
-│   ├── WebviewPanel.ts
-│   └── TreeViewProvider.ts
-├── types/              # TypeScript types
-│   └── harness.ts
-├── webview/            # Webview assets (HTML/CSS)
-│   ├── index.html
-│   ├── style.css
-│   └── script.js
-└── extension.ts        # Entry point
+✓ Active Harnesses     ← all currently installed harnesses
+★ Starred              ← your favourites (not yet installed)
+  Available Harnesses  ← everything else, grouped by category
+  Import Harness       ← import from a local folder or ZIP
+  Harness Repository   ← switch to a different GitHub repo
+  Version History      ← backups with restore and clear-all
 ```
 
-## GitHub Repository Structure
+---
 
-The harness repository should follow this structure:
+## Settings
+
+| Setting | Default | Description |
+|---|---|---|
+| `harnessManager.githubRepo` | `AdmiralGallade/harness-repository` | GitHub repo to load harnesses from (`owner/repo`) |
+| `harnessManager.multiHarnessInstall` | `false` | When on, installing a harness does not remove others |
+| `harnessManager.activeHarnessId` | *(auto)* | ID of the primary active harness (set automatically) |
+| `harnessManager.cacheRefreshInterval` | `86400000` | Cache lifetime in ms (default 24 h) |
+
+---
+
+## Harness Repository Format
+
+Point the extension at any public GitHub repo with this structure:
 
 ```
 harness-repository/
-├── README.md
-├── harnesses.json          # Central manifest
-├── /harnesses/
-│   ├── harness-name-1/
-│   │   ├── config.json
-│   │   ├── template.yaml
-│   │   └── README.md
-│   └── harness-name-2/
-└── /skills/
-    ├── skill-1/
-    └── skill-2/
+├── harnesses.json          # manifest listing all harnesses
+└── harnesses/
+    └── my-harness/
+        ├── config.json
+        ├── template.yaml
+        └── README.md
 ```
 
-### harnesses.json Format
+**`harnesses.json` schema:**
 
 ```json
 {
   "version": "1.0",
-  "lastUpdated": "2026-05-28T00:00:00Z",
+  "lastUpdated": "2026-01-01T00:00:00Z",
   "harnesses": [
     {
-      "id": "unique-id",
-      "name": "Display Name",
-      "description": "Detailed description",
-      "category": "category-name",
-      "tags": ["tag1", "tag2"],
+      "id": "my-harness",
+      "name": "My Harness",
+      "description": "What this harness does",
+      "category": "Development",
+      "tags": ["typescript", "testing"],
       "dependencies": [],
-      "author": "Author Name",
+      "author": "Your Name",
       "version": "1.0.0",
       "files": [
         {
-          "path": "harnesses/harness-name/template.yaml",
+          "path": "harnesses/my-harness/template.yaml",
           "type": "template",
-          "description": "Template file"
+          "description": "Main instructions"
         }
       ]
     }
@@ -192,28 +106,8 @@ harness-repository/
 }
 ```
 
-## Dependencies
-
-- `vscode`: VS Code extension API
-- `octokit`: GitHub API client
-- `js-yaml`: YAML parser
-- `esbuild`: JavaScript bundler
-- `typescript`: TypeScript compiler
+---
 
 ## License
 
 MIT
-
-## Support
-
-For issues or feature requests, please create an issue in the repository.
-
-## Future Enhancements
-
-- [ ] Local harness repository support
-- [ ] Custom validation scripts
-- [ ] Harness marketplace integration
-- [ ] Version management
-- [ ] Dependency resolution
-- [ ] CI/CD integration
-- [ ] Multi-language support
