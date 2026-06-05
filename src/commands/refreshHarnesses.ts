@@ -1,13 +1,12 @@
 import * as vscode from 'vscode';
 import { GitHubService } from '../services/GitHubService';
-import { CacheManager } from '../services/CacheManager';
 
 /**
  * Command to refresh the harnesses list
  */
 export async function refreshHarnessesCommand(
   githubService: GitHubService,
-  cacheManager: CacheManager
+  _cacheManager?: unknown
 ): Promise<void> {
   try {
     await vscode.window.withProgress(

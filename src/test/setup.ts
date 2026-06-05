@@ -29,7 +29,7 @@ jest.mock('vscode', () => ({
   },
   Uri: {
     file: (path: string) => ({ fsPath: path }),
-    joinPath: jest.fn((uri, ...parts) => uri),
+    joinPath: jest.fn((uri, ..._parts) => uri),
   },
   TreeItem: class {},
   TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },

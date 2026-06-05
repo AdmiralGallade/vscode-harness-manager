@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { HarnessCreationOptions } from '../types/harness';
 
 /**
  * Service for managing file system operations
@@ -126,6 +125,7 @@ export class FileSystemManager {
    * Remove a harness directory
    */
   async removeHarness(harnessPath: string): Promise<boolean> {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { Logger } = require('./Logger');
     const log = Logger.instance;
     log.info('FileSystemManager', `removeHarness: ${harnessPath}`);

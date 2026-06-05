@@ -486,6 +486,7 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
       // Extract to a temp directory in extension storage
       tempDir = path.join(this._context.globalStorageUri.fsPath, 'import-temp', String(Date.now()));
       fs.mkdirSync(tempDir, { recursive: true });
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const AdmZip: typeof import('adm-zip') = require('adm-zip');
       const zip = new (AdmZip as any)(zipPath);
       zip.extractAllTo(tempDir, true);

@@ -1,7 +1,10 @@
 .vscode/**
 .vscode-test/**
-out/test/**
+out/**
 src/**
+test/**
+test1/**
+scripts/**
 .gitignore
 .yarnrc
 *.map
@@ -13,3 +16,6 @@ node_modules/**
 .prettierignore
 **/.eslintrc.json
 **/.prettierrc.json
+jest.config.js
+tsconfig.json
+SETUP.md
