@@ -1,0 +1,124 @@
+{
+  "name": "vscode-harness-manager",
+  "displayName": "Harness Manager",
+  "description": "Switch between Claude Code harnesses instantly from the VS Code activity bar",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "keywords": ["harness", "claude", "claude-code"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "harnessManager",
+          "title": "Harness Manager",
+          "icon": "resources/harness.svg"
+        }
+      ]
+    },
+    "views": {
+      "harnessManager": [
+        {
+          "id": "harnessManagerView",
+          "name": "Harnesses",
+          "icon": "resources/harness.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "harnessManager.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "harnessManager.activateHarness",
+        "title": "Activate Harness",
+        "icon": "$(play)"
+      },
+      {
+        "command": "harnessManager.openHarness",
+        "title": "Open Harness File",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "harnessManager.addHarnessDirectory",
+        "title": "Add Harness Directory",
+        "icon": "$(add)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "harnessManager.refresh",
+          "when": "view == harnessManagerView",
+          "group": "navigation"
+        },
+        {
+          "command": "harnessManager.addHarnessDirectory",
+          "when": "view == harnessManagerView",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "harnessManager.activateHarness",
+          "when": "view == harnessManagerView && viewItem == harness",
+          "group": "inline"
+        },
+        {
+          "command": "harnessManager.openHarness",
+          "when": "view == harnessManagerView && viewItem == harness",
+          "group": "inline"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Harness Manager",
+      "properties": {
+        "harnessManager.harnessPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Additional directories to scan for harnesses (in addition to the workspace root)"
+        },
+        "harnessManager.activeHarness": {
+          "type": "string",
+          "default": "",
+          "description": "The currently active harness name"
+        },
+        "harnessManager.autoScanWorkspace": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically scan the workspace root for harness directories"
+        },
+        "harnessManager.harnessFilePattern": {
+          "type": "string",
+          "default": "template.yaml",
+          "description": "Filename that identifies a harness directory (e.g. template.yaml)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.3.0"
+  }
+}
