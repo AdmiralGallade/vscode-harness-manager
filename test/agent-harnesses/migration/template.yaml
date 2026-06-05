@@ -1,0 +1,46 @@
+---
+# Migration Harness Template
+apiVersion: v1
+kind: Harness
+metadata:
+  name: migration-harness
+  version: 1.0.0
+spec:
+  type: migration
+  features:
+    - compatibility-check
+    - data-transformation
+    - rollback-support
+  sourceSystem:
+    type: "{{SOURCE_TYPE}}"
+    version: "{{SOURCE_VERSION}}"
+    connection: "{{SOURCE_CONNECTION}}"
+  targetSystem:
+    type: "{{TARGET_TYPE}}"
+    version: "{{TARGET_VERSION}}"
+    connection: "{{TARGET_CONNECTION}}"
+  preChecks:
+    - name: verify-compatibility
+      type: compatibility
+    - name: validate-data-integrity
+      type: validation
+  migration:
+    strategy: "incremental"
+    parallelism: 5
+    stages:
+      - name: extract
+        type: data-extraction
+      - name: transform
+        type: data-transformation
+      - name: validate
+        type: validation
+      - name: load
+        type: data-loading
+  postChecks:
+    - name: verify-counts
+      type: count-verification
+    - name: spot-check
+      type: spot-check
+  rollback:
+    enabled: true
+    backupLocation: "{{BACKUP_LOCATION}}"

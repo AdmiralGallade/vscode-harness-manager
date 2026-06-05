@@ -1,17 +1,20 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Logger } from './Logger';
+
+const SCOPE = 'BackupManager';
 
 export interface BackupEntry {
   timestamp: number;
-  label: string;       // human-readable e.g. "2024-06-05 10:32"
+  label: string;
   harnessId: string;
   harnessName: string;
-  sourceDir: string;   // original on-disk location that was backed up
-  files: string[];     // filenames that were backed up
+  sourceDir: string;
+  files: string[];   // relative paths from sourceDir root (preserves subdir structure)
 }
 
-type Metadata = Record<string, BackupEntry[]>; // keyed by harnessId
+type Metadata = Record<string, BackupEntry[]>;
 
 export class BackupManager {
   private readonly backupsRoot: string;
@@ -20,24 +23,28 @@ export class BackupManager {
   constructor(private readonly context: vscode.ExtensionContext) {
     this.backupsRoot = path.join(context.globalStorageUri.fsPath, 'harness-backups');
     this.metaPath    = path.join(this.backupsRoot, 'metadata.json');
+    Logger.instance.info(SCOPE, `Backup root: ${this.backupsRoot}`);
   }
 
-  /** Back up all files in sourceDir for harnessId before overwriting. */
+  /** Recursively back up sourceDir to a timestamped snapshot. */
   async backup(harnessId: string, harnessName: string, sourceDir: string): Promise<void> {
-    if (!fs.existsSync(sourceDir)) { return; }
+    const log = Logger.instance;
+    log.info(SCOPE, `backup("${harnessId}") — source: ${sourceDir}`);
 
-    const ts    = Date.now();
-    const dest  = path.join(this.backupsRoot, harnessId, String(ts));
+    if (!fs.existsSync(sourceDir)) {
+      log.warn(SCOPE, `backup("${harnessId}") — source dir does not exist, skipping`);
+      return;
+    }
+
+    const ts   = Date.now();
+    const dest = path.join(this.backupsRoot, harnessId, String(ts));
+    log.debug(SCOPE, `Creating backup snapshot: ${dest}`);
     fs.mkdirSync(dest, { recursive: true });
 
-    const files: string[] = [];
-    for (const f of fs.readdirSync(sourceDir)) {
-      const src = path.join(sourceDir, f);
-      if (fs.statSync(src).isFile()) {
-        fs.copyFileSync(src, path.join(dest, f));
-        files.push(f);
-      }
-    }
+    // Recursively copy the entire harness directory tree
+    const relFiles = this._copyDirRecursive(sourceDir, dest);
+    log.info(SCOPE, `backup("${harnessId}") — saved ${relFiles.length} file(s) at ts=${ts}`);
+    relFiles.forEach(f => log.debug(SCOPE, `  backed up: ${f}`));
 
     const meta = this._readMeta();
     if (!meta[harnessId]) { meta[harnessId] = []; }
@@ -47,60 +54,97 @@ export class BackupManager {
       harnessId,
       harnessName,
       sourceDir,
-      files,
+      files: relFiles,
     });
     this._writeMeta(meta);
   }
 
-  /** Return all backup entries, newest first, optionally filtered by harnessId. */
   getBackups(harnessId?: string): BackupEntry[] {
+    const log = Logger.instance;
     const meta = this._readMeta();
-    if (harnessId) { return meta[harnessId] ?? []; }
-    return Object.values(meta).flat().sort((a, b) => b.timestamp - a.timestamp);
+    if (harnessId) {
+      const entries = meta[harnessId] ?? [];
+      log.debug(SCOPE, `getBackups("${harnessId}") — ${entries.length} entries`);
+      return entries;
+    }
+    const all = Object.values(meta).flat().sort((a, b) => b.timestamp - a.timestamp);
+    log.debug(SCOPE, `getBackups() — ${all.length} total entries across ${Object.keys(meta).length} harnesses`);
+    return all;
   }
 
-  /** Restore a specific backup to its original sourceDir. */
-  async restore(harnessId: string, timestamp: number): Promise<boolean> {
+  /** Restore a snapshot back to its original sourceDir.
+   *  Returns the sourceDir path so the caller can update AI pointer files. */
+  async restore(harnessId: string, timestamp: number): Promise<string | null> {
+    const log = Logger.instance;
+    log.info(SCOPE, `restore("${harnessId}", ts=${timestamp})`);
+
     const meta    = this._readMeta();
     const entries = meta[harnessId] ?? [];
     const entry   = entries.find(e => e.timestamp === timestamp);
-    if (!entry) { return false; }
+
+    if (!entry) {
+      log.warn(SCOPE, `restore — no backup entry found for harnessId="${harnessId}" ts=${timestamp}`);
+      return null;
+    }
+    log.debug(SCOPE, `restore — entry.sourceDir: "${entry.sourceDir}"`);
 
     const backupDir = path.join(this.backupsRoot, harnessId, String(timestamp));
-    if (!fs.existsSync(backupDir)) { return false; }
+    if (!fs.existsSync(backupDir)) {
+      log.warn(SCOPE, `restore — backup snapshot missing on disk: ${backupDir}`);
+      return null;
+    }
+    log.debug(SCOPE, `restore — snapshot dir: ${backupDir}`);
 
-    // Backup current state before restoring (so restore itself is undoable)
+    // Pre-backup the CURRENT state so restore is itself undoable
+    log.debug(SCOPE, `restore — pre-backing up current state`);
     await this.backup(harnessId, entry.harnessName, entry.sourceDir);
 
-    // Clear destination and copy backup files back
+    // Wipe the target directory then replace with the snapshot
+    log.debug(SCOPE, `restore — removing current contents of: ${entry.sourceDir}`);
     if (fs.existsSync(entry.sourceDir)) {
-      for (const f of fs.readdirSync(entry.sourceDir)) {
-        fs.rmSync(path.join(entry.sourceDir, f), { force: true });
-      }
-    } else {
-      fs.mkdirSync(entry.sourceDir, { recursive: true });
+      fs.rmSync(entry.sourceDir, { recursive: true, force: true });
     }
+    fs.mkdirSync(entry.sourceDir, { recursive: true });
 
-    for (const f of entry.files) {
-      const src = path.join(backupDir, f);
-      if (fs.existsSync(src)) {
-        fs.copyFileSync(src, path.join(entry.sourceDir, f));
-      }
-    }
+    const restored = this._copyDirRecursive(backupDir, entry.sourceDir);
+    log.info(SCOPE, `restore("${harnessId}") — restored ${restored.length} file(s) to: ${entry.sourceDir}`);
+    restored.forEach(f => log.debug(SCOPE, `  restored: ${f}`));
 
-    return true;
+    return entry.sourceDir;
   }
 
-  /** Delete all backups and the metadata file. */
   clearAll(): void {
+    const log = Logger.instance;
+    const size = this.totalSize();
+    log.info(SCOPE, `clearAll() — removing ${this.backupsRoot} (${Math.round(size / 1024)} KB)`);
     if (fs.existsSync(this.backupsRoot)) {
       fs.rmSync(this.backupsRoot, { recursive: true, force: true });
     }
+    log.info(SCOPE, 'clearAll() — done');
   }
 
-  /** Total size of the backups folder in bytes. */
   totalSize(): number {
     return this._dirSize(this.backupsRoot);
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  /** Recursively copy src → dest. Returns list of relative file paths copied. */
+  private _copyDirRecursive(src: string, dest: string, relBase = ''): string[] {
+    const copied: string[] = [];
+    fs.mkdirSync(dest, { recursive: true });
+    for (const item of fs.readdirSync(src)) {
+      const srcItem  = path.join(src,  item);
+      const destItem = path.join(dest, item);
+      const rel      = relBase ? `${relBase}/${item}` : item;
+      if (fs.statSync(srcItem).isDirectory()) {
+        copied.push(...this._copyDirRecursive(srcItem, destItem, rel));
+      } else {
+        fs.copyFileSync(srcItem, destItem);
+        copied.push(rel);
+      }
+    }
+    return copied;
   }
 
   private _dirSize(dir: string): number {
@@ -108,22 +152,27 @@ export class BackupManager {
     let total = 0;
     for (const f of fs.readdirSync(dir)) {
       const full = path.join(dir, f);
-      const stat = fs.statSync(full);
-      total += stat.isDirectory() ? this._dirSize(full) : stat.size;
+      total += fs.statSync(full).isDirectory() ? this._dirSize(full) : fs.statSync(full).size;
     }
     return total;
   }
 
   private _readMeta(): Metadata {
+    const log = Logger.instance;
     try {
       if (fs.existsSync(this.metaPath)) {
-        return JSON.parse(fs.readFileSync(this.metaPath, 'utf8')) as Metadata;
+        const meta = JSON.parse(fs.readFileSync(this.metaPath, 'utf8')) as Metadata;
+        log.debug(SCOPE, `_readMeta — loaded ${Object.keys(meta).length} harness entries`);
+        return meta;
       }
-    } catch { /* corrupt — start fresh */ }
+    } catch (e) {
+      log.warn(SCOPE, '_readMeta — corrupt metadata, starting fresh', e instanceof Error ? e.message : e);
+    }
     return {};
   }
 
   private _writeMeta(meta: Metadata): void {
+    Logger.instance.debug(SCOPE, `_writeMeta — writing ${Object.keys(meta).length} harness entries`);
     fs.mkdirSync(path.dirname(this.metaPath), { recursive: true });
     fs.writeFileSync(this.metaPath, JSON.stringify(meta, null, 2), 'utf8');
   }

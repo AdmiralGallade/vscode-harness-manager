@@ -126,15 +126,23 @@ export class FileSystemManager {
    * Remove a harness directory
    */
   async removeHarness(harnessPath: string): Promise<boolean> {
+    const { Logger } = require('./Logger');
+    const log = Logger.instance;
+    log.info('FileSystemManager', `removeHarness: ${harnessPath}`);
     try {
       if (fs.existsSync(harnessPath)) {
         fs.rmSync(harnessPath, { recursive: true, force: true });
-        console.log(`Removed harness directory: ${harnessPath}`);
+        if (fs.existsSync(harnessPath)) {
+          log.warn('FileSystemManager', `removeHarness: path still exists after rmSync — ${harnessPath}`);
+          return false;
+        }
+        log.info('FileSystemManager', `removeHarness: deleted OK — ${harnessPath}`);
         return true;
       }
+      log.debug('FileSystemManager', `removeHarness: path did not exist — ${harnessPath}`);
       return false;
     } catch (error) {
-      console.error('Error removing harness directory:', error);
+      log.error('FileSystemManager', `removeHarness failed: ${harnessPath}`, error);
       throw error;
     }
   }

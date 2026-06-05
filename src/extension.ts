@@ -5,7 +5,10 @@ import { GitHubService } from './services/GitHubService';
 import { CacheManager } from './services/CacheManager';
 import { FileSystemManager } from './services/FileSystemManager';
 import { MetadataParser } from './services/MetadataParser';
+import { Logger } from './services/Logger';
 import { HarnessSidebarProvider } from './ui/SidebarProvider';
+
+const SCOPE = 'extension';
 
 let cacheManager: CacheManager;
 let githubService: GitHubService;
@@ -14,53 +17,69 @@ let metadataParser: MetadataParser;
 let sidebarProvider: HarnessSidebarProvider;
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log('Harness Manager extension activated');
+  const log = Logger.instance;
+  log.info(SCOPE, '=== Harness Manager activating ===');
+  log.debug(SCOPE, 'Extension storage path', context.globalStorageUri.fsPath);
+  log.debug(SCOPE, 'VS Code version', vscode.version);
 
-  cacheManager = new CacheManager(context);
-  githubService = new GitHubService(cacheManager);
+  cacheManager    = new CacheManager(context);
+  githubService   = new GitHubService(cacheManager);
   fileSystemManager = new FileSystemManager();
-  metadataParser = new MetadataParser();
+  metadataParser  = new MetadataParser();
 
-  // Register the sidebar webview view provider
+  log.debug(SCOPE, 'Services initialised — registering sidebar provider');
+
   sidebarProvider = new HarnessSidebarProvider(context, githubService, fileSystemManager);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(HarnessSidebarProvider.viewType, sidebarProvider, {
       webviewOptions: { retainContextWhenHidden: true },
     })
   );
+  log.info(SCOPE, `Sidebar provider registered for view "${HarnessSidebarProvider.viewType}"`);
 
-  // Register commands
   const commands: { id: string; handler: (...args: any[]) => any }[] = [
     {
       id: 'harness-manager.selectHarness',
-      handler: () => selectHarnessCommand(context, githubService, cacheManager, fileSystemManager, metadataParser),
+      handler: () => {
+        log.info(SCOPE, 'Command: selectHarness');
+        return selectHarnessCommand(context, githubService, cacheManager, fileSystemManager, metadataParser);
+      },
     },
     {
       id: 'harness-manager.refreshList',
       handler: () => {
+        log.info(SCOPE, 'Command: refreshList');
         refreshHarnessesCommand(githubService, cacheManager);
         sidebarProvider.refresh();
       },
     },
     {
       id: 'harness-manager.openSettings',
-      handler: () => vscode.commands.executeCommand('workbench.action.openSettings', 'harnessManager'),
+      handler: () => {
+        log.info(SCOPE, 'Command: openSettings');
+        return vscode.commands.executeCommand('workbench.action.openSettings', 'harnessManager');
+      },
     },
   ];
 
   for (const { id, handler } of commands) {
     context.subscriptions.push(vscode.commands.registerCommand(id, handler));
+    log.debug(SCOPE, `Registered command: ${id}`);
   }
 
   vscode.workspace.onDidChangeConfiguration((e) => {
     if (e.affectsConfiguration('harnessManager')) {
+      log.info(SCOPE, 'Configuration changed — reinitialising GitHubService and refreshing sidebar');
       githubService = new GitHubService(cacheManager);
       sidebarProvider.refresh();
       vscode.window.showInformationMessage('Harness Manager configuration updated');
     }
   });
+
+  log.info(SCOPE, '=== Harness Manager activated successfully ===');
 }
 
 export function deactivate() {
-  console.log('Harness Manager extension deactivated');
+  Logger.instance.info(SCOPE, '=== Harness Manager deactivating ===');
+  Logger.dispose();
 }

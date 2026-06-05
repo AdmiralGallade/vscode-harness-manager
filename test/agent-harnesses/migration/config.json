@@ -1,0 +1,16 @@
+{
+  "name": "migration",
+  "version": "1.0.0",
+  "description": "Migration Harness",
+  "requirements": {
+    "minMemory": "2GB",
+    "minDiskSpace": "5GB",
+    "dependencies": []
+  },
+  "configuration": {
+    "verificationEnabled": true,
+    "rollbackEnabled": true,
+    "parallelMigrations": 5,
+    "validationLevel": "strict"
+  }
+}

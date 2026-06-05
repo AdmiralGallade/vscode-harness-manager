@@ -105,6 +105,11 @@
           "type": "string",
           "default": "",
           "description": "ID of the currently active harness (set automatically when a harness is installed)"
+        },
+        "harnessManager.multiHarnessInstall": {
+          "type": "boolean",
+          "default": false,
+          "description": "When enabled, installing a harness will not remove other installed harnesses. All installed harnesses coexist in agent-harnesses/."
         }
       }
     }
@@ -124,6 +129,7 @@
     "vsce:package": "vsce package"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
     "@types/jest": "^29.5.0",
     "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^10.0.1",
@@ -141,7 +147,7 @@
     "typescript": "^5.0.2"
   },
   "dependencies": {
-    "js-yaml": "^4.1.0",
-    "octokit": "^2.0.14"
+    "adm-zip": "^0.5.17",
+    "js-yaml": "^4.1.0"
   }
 }

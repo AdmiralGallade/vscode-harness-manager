@@ -1,0 +1,16 @@
+{
+  "name": "data-intensive",
+  "version": "1.0.0",
+  "description": "Data Intensive Harness",
+  "requirements": {
+    "minMemory": "4GB",
+    "minDiskSpace": "10GB",
+    "dependencies": []
+  },
+  "configuration": {
+    "batchSize": 1000,
+    "cacheExpiry": 3600,
+    "maxConnections": 10,
+    "retryAttempts": 3
+  }
+}
