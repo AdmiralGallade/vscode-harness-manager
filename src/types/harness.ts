@@ -24,6 +24,7 @@ export interface HarnessDefinition {
   author: string;
   version: string;
   files: HarnessFile[];
+  externalRequirements?: string[];
 }
 
 /**

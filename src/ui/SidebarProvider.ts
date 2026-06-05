@@ -945,6 +945,13 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
   .restore-btn:hover{background:var(--vscode-button-hoverBackground)}
   .restore-btn:disabled{opacity:.55;cursor:not-allowed}
 
+  /* ── external requirements warning ── */
+  .ext-req{background:rgba(200,150,0,.1);border:1px solid rgba(200,150,0,.4);border-radius:3px;padding:6px 8px;margin-bottom:8px}
+  .ext-req-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#c89600;margin-bottom:4px}
+  .ext-req-list{list-style:none;padding:0;margin:0}
+  .ext-req-list li{font-size:11px;color:var(--vscode-foreground);padding:1px 0 1px 14px;position:relative;line-height:1.4}
+  .ext-req-list li::before{content:'•';position:absolute;left:4px;color:#c89600}
+
   /* ── misc ── */
   .status{padding:20px 8px;text-align:center;color:var(--vscode-descriptionForeground);font-size:12px}
   .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--vscode-descriptionForeground);border-top-color:var(--vscode-focusBorder);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
@@ -1137,6 +1144,15 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
         ? '<div class="detail-meta-key">Depends on</div><div class="detail-meta-val">' + esc(h.dependencies.join(', ')) + '</div>'
         : '';
 
+      const extReqHtml = (h.externalRequirements && h.externalRequirements.length)
+        ? '<div class="ext-req">'
+          + '<div class="ext-req-title">⚠️ External Requirements</div>'
+          + '<ul class="ext-req-list">'
+          + h.externalRequirements.map(r => '<li>' + esc(r) + '</li>').join('')
+          + '</ul>'
+          + '</div>'
+        : '';
+
       parts.push(
         '<div id="item-' + esc(h.id) + '" data-hid="' + esc(h.id) + '">'
         + '<div class="harness-row' + (isActive ? ' active' : (isInstalled ? ' installed' : '')) + (isOpen ? ' selected' : '') + '" data-action="toggle" data-hid="' + esc(h.id) + '">'
@@ -1164,6 +1180,7 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
         +     depsHtml
         +   '</div>'
         +   tagPills
+        +   extReqHtml
         +   filesHtml
         +   '<div class="detail-install-row" style="display:flex;gap:6px">'
         +     '<button class="' + (isActive ? 'active-btn' : '') + '" data-action="install" data-hid="' + esc(h.id) + '" style="flex:1">'
