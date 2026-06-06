@@ -2,11 +2,12 @@
   "name": "harness-manager",
   "displayName": "Harness Manager",
   "description": "Install and manage AI agent harnesses for VS Code, Cursor, and Windsurf. Instantly configures Claude Code, GitHub Copilot, Cursor, and Windsurf with the right instructions for your workflow.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "AdmiralGallade",
   "author": {
     "name": "Harness Team"
   },
+  "icon": "media/harness-icon.png",
   "license": "MIT",
   "repository": {
     "type": "git",
