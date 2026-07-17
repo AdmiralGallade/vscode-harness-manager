@@ -11,3 +11,4 @@ npm-debug.log*
 .vscode/settings.json
 .vscode/extensions.json
 *.env
+*.zip

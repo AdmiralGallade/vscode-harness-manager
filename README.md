@@ -1,8 +1,32 @@
 # Harness Manager
 
-An extension for **VS Code, Cursor, and Windsurf** for installing and managing **AI agent harnesses** — pre-built instruction sets that configure your AI tools for specific workflows.
+A lightweight VS Code, Cursor and Windsurf extension for installing and managing AI agent harnesses.
 
----
+## Why use this
+
+- Install harnesses from a GitHub repository
+- Keep multiple harnesses available with optional multi-install support
+- Automatically update AI agent config files for VS Code, Cursor, Copilot, and Windsurf
+- Restore previous harness states from automatic backups
+
+## Install
+
+1. Open a folder in VS Code
+2. Open the Harness Manager sidebar
+3. Select a harness and click **Install**
+
+## Add your own harnesses
+
+You can publish your own harness repository or upload harnesses here:
+
+https://github.com/AdmiralGallade?tab=repositories
+
+## Configuration
+
+- `harnessManager.githubRepo` — GitHub repo to load harnesses from (`owner/repo`)
+- `harnessManager.multiHarnessInstall` — install without removing existing harnesses
+- `harnessManager.cacheRefreshInterval` — cache lifetime in milliseconds
+
 
 ## What is a harness?
 
@@ -18,8 +42,8 @@ A harness is a collection of files (prompts, rules, hooks, skills) that tells yo
 ## Compatible editors
 
 - **VS Code** — install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdmiralGallade.harness-manager)
-- **Cursor** — install from the [Open VSX Registry](https://open-vsx.org/extension/AdmiralGallade/harness-manager) or directly via `.vsix`
-- **Windsurf** — install from the [Open VSX Registry](https://open-vsx.org/extension/AdmiralGallade/harness-manager) or directly via `.vsix`
+- **Cursor** — install directly via `.vsix`
+- **Windsurf** — install directly via `.vsix`
 
 ---
 
