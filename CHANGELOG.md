@@ -2,6 +2,11 @@
 
 All notable changes to the Harness Manager extension are documented here.
 
+## 0.2.1
+
+### Changed
+- Documentation updates (README links, marketplace badges, Open VSX listing). No functional changes.
+
 ## 0.2.0
 
 ### Added
