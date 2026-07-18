@@ -6,6 +6,7 @@ import { GitHubService } from '../services/GitHubService';
 import { FileSystemManager } from '../services/FileSystemManager';
 import { BackupManager } from '../services/BackupManager';
 import { Logger } from '../services/Logger';
+import { getEnabledTargets } from '../services/PointerTargets';
 
 const SCOPE = 'SidebarProvider';
 
@@ -15,7 +16,32 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private _harnesses: HarnessDefinition[] = [];
   private _activeHarnessId?: string;
+  private _statusBar?: vscode.StatusBarItem;
   private readonly _backup: BackupManager;
+
+  /** Attach a status bar item that reflects the active harness. */
+  setStatusBar(item: vscode.StatusBarItem): void {
+    this._statusBar = item;
+    if (!this._activeHarnessId) {
+      const configured = vscode.workspace.getConfiguration('harnessManager').get<string>('activeHarnessId');
+      this._activeHarnessId = configured || undefined;
+    }
+    this._updateStatusBar();
+  }
+
+  private _updateStatusBar(): void {
+    if (!this._statusBar) { return; }
+    const id = this._activeHarnessId;
+    if (id) {
+      const name = this._harnesses.find(h => h.id === id)?.name ?? id;
+      this._statusBar.text = `$(rocket) Harness: ${name}`;
+      this._statusBar.tooltip = `Active harness: ${name}\nClick to open Harness Manager`;
+    } else {
+      this._statusBar.text = '$(rocket) Harness: none';
+      this._statusBar.tooltip = 'No active harness\nClick to open Harness Manager';
+    }
+    this._statusBar.show();
+  }
 
   private _getStarred(): string[] {
     const starred = this._context.globalState.get<string[]>('starredHarnesses', []);
@@ -135,6 +161,74 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
     this._sendHistory();
   }
 
+  /**
+   * Regenerate all AI pointer files from the currently active harness's
+   * installed content. Useful when files drifted, were deleted, or the
+   * `pointerTargets` setting changed.
+   */
+  async syncActiveHarness(): Promise<void> {
+    const log = Logger.instance;
+    log.info(SCOPE, 'syncActiveHarness — start');
+    const wsRoot = this.fileSystemManager.getWorkspaceRoot();
+    if (!wsRoot) {
+      vscode.window.showWarningMessage('Harness Manager: open a workspace folder before syncing.');
+      return;
+    }
+    const activeId = this._activeHarnessId
+      ?? vscode.workspace.getConfiguration('harnessManager').get<string>('activeHarnessId');
+    if (!activeId) {
+      vscode.window.showInformationMessage('Harness Manager: no active harness to sync. Install one first.');
+      return;
+    }
+    const harnessDir = path.join(wsRoot, 'agent-harnesses', activeId);
+    if (!fs.existsSync(harnessDir)) {
+      log.warn(SCOPE, `syncActiveHarness — active harness dir missing: ${harnessDir}`);
+      vscode.window.showErrorMessage(`Harness Manager: active harness '${activeId}' is not installed in this workspace.`);
+      return;
+    }
+
+    // Make sure the harness catalog is loaded so we can resolve metadata.
+    if (this._harnesses.length === 0) {
+      const list = await this.githubService.getHarnesesList(false);
+      if (list?.harnesses) { this._harnesses = list.harnesses; }
+    }
+    const files = this._readDirAsMap(harnessDir);
+    const harness = this._harnesses.find(h => h.id === activeId) ?? {
+      id: activeId, name: activeId, description: `Harness: ${activeId}`,
+      category: 'Local', tags: [], dependencies: [], author: 'Local', version: '1.0.0', files: [],
+    };
+    const createdFiles = [...files.keys()].map(k => path.join(harnessDir, ...k.split('/')));
+    await this._writePointerFiles(wsRoot, harness as HarnessDefinition, files, harnessDir, createdFiles);
+    vscode.window.showInformationMessage(`Harness Manager: re-synced AI config files from '${harness.name}'.`);
+    log.info(SCOPE, 'syncActiveHarness — complete');
+  }
+
+  /**
+   * Reset all AI pointer files to a "no active harness" placeholder and clear
+   * the active-harness setting. Installed harness folders are left untouched.
+   */
+  async cleanPointerFilesCommand(): Promise<void> {
+    const log = Logger.instance;
+    const wsRoot = this.fileSystemManager.getWorkspaceRoot();
+    if (!wsRoot) {
+      vscode.window.showWarningMessage('Harness Manager: open a workspace folder before cleaning.');
+      return;
+    }
+    const confirm = await vscode.window.showWarningMessage(
+      'Reset all AI instruction files (AGENTS.md, CLAUDE.md, Copilot, Cursor, …) to an empty placeholder and clear the active harness? Installed harness folders are kept.',
+      { modal: true },
+      'Reset'
+    );
+    if (confirm !== 'Reset') { return; }
+    log.info(SCOPE, 'cleanPointerFilesCommand — resetting pointer files');
+    this._clearPointerFiles(wsRoot);
+    await vscode.workspace.getConfiguration('harnessManager').update('activeHarnessId', undefined, vscode.ConfigurationTarget.Global);
+    this._activeHarnessId = undefined;
+    this._updateStatusBar();
+    this._send({ type: 'installed', id: '', success: true, activeId: null, installedIds: this._getInstalledIds() });
+    vscode.window.showInformationMessage('Harness Manager: AI instruction files reset. No harness is active.');
+  }
+
   private async _loadAndSend(force = false): Promise<void> {
     const log = Logger.instance;
     log.info(SCOPE, `_loadAndSend(force=${force})`);
@@ -145,6 +239,7 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
         this._harnesses = list.harnesses;
         const activeId = vscode.workspace.getConfiguration('harnessManager').get<string>('activeHarnessId');
         this._activeHarnessId = activeId;
+        this._updateStatusBar();
         const installedIds = this._getInstalledIds();
         const starredIds   = this._getStarred();
         log.info(SCOPE, `Sending ${this._harnesses.length} harnesses to webview, activeId="${activeId}", installed=[${installedIds.join(',')}], starred=[${starredIds.join(',')}]`);
@@ -337,6 +432,7 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
 
           await vscode.workspace.getConfiguration('harnessManager').update('activeHarnessId', id, vscode.ConfigurationTarget.Global);
           this._activeHarnessId = id;
+          this._updateStatusBar();
           log.info(SCOPE, `activeHarnessId set to "${id}"`);
 
           const warning = failed.length > 0 ? ` (${failed.length} file(s) skipped — not found in repo)` : '';
@@ -426,39 +522,26 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
 
       const fullContent = header + harnessInstructions;
 
-      // ── Claude Code: .claude/CLAUDE.md ──────────────────────────────────
-      const claudeDir = path.join(wsRoot, '.claude');
-      fs.mkdirSync(claudeDir, { recursive: true });
-      fs.writeFileSync(path.join(claudeDir, 'CLAUDE.md'), fullContent, 'utf8');
-      fs.writeFileSync(path.join(claudeDir, 'active-harness.md'), fullContent, 'utf8');
-      log.debug(SCOPE, `Written: ${path.join(claudeDir, 'CLAUDE.md')}`);
+      // Resolve which tools to write for from configuration (empty = all).
+      const enabledIds = vscode.workspace.getConfiguration('harnessManager').get<string[]>('pointerTargets');
+      const targets = getEnabledTargets(enabledIds);
+      log.debug(SCOPE, `Pointer targets enabled: [${targets.map(t => t.id).join(',')}]`);
 
-      // ── GitHub Copilot: .github/copilot-instructions.md ─────────────────
-      const githubDir = path.join(wsRoot, '.github');
-      fs.mkdirSync(githubDir, { recursive: true });
-      fs.writeFileSync(path.join(githubDir, 'copilot-instructions.md'), fullContent, 'utf8');
-      log.debug(SCOPE, `Written: ${path.join(githubDir, 'copilot-instructions.md')}`);
+      let fileCount = 0;
+      for (const target of targets) {
+        for (const file of target.files) {
+          const dest = path.join(wsRoot, ...file.relPath.split('/'));
+          const content = file.wrap
+            ? file.wrap(fullContent, { name: harness.name, placeholder: false })
+            : fullContent;
+          fs.mkdirSync(path.dirname(dest), { recursive: true });
+          fs.writeFileSync(dest, content, 'utf8');
+          fileCount++;
+          log.debug(SCOPE, `  Written (${target.id}): ${dest}`);
+        }
+      }
 
-      // ── Cursor: .cursorrules (legacy) + .cursor/rules/harness.mdc ───────
-      fs.writeFileSync(path.join(wsRoot, '.cursorrules'), fullContent, 'utf8');
-      log.debug(SCOPE, `Written: ${path.join(wsRoot, '.cursorrules')}`);
-
-      const cursorRulesDir = path.join(wsRoot, '.cursor', 'rules');
-      fs.mkdirSync(cursorRulesDir, { recursive: true });
-      const mdcContent = `---\ndescription: Active harness — ${harness.name}\nalwaysApply: true\n---\n\n${fullContent}`;
-      fs.writeFileSync(path.join(cursorRulesDir, 'harness.mdc'), mdcContent, 'utf8');
-      log.debug(SCOPE, `Written: ${path.join(cursorRulesDir, 'harness.mdc')}`);
-
-      // ── Windsurf: .windsurfrules + .windsurf/rules/harness.md ───────────
-      fs.writeFileSync(path.join(wsRoot, '.windsurfrules'), fullContent, 'utf8');
-      log.debug(SCOPE, `Written: ${path.join(wsRoot, '.windsurfrules')}`);
-
-      const windsurfRulesDir = path.join(wsRoot, '.windsurf', 'rules');
-      fs.mkdirSync(windsurfRulesDir, { recursive: true });
-      fs.writeFileSync(path.join(windsurfRulesDir, 'harness.md'), fullContent, 'utf8');
-      log.debug(SCOPE, `Written: ${path.join(windsurfRulesDir, 'harness.md')}`);
-
-      log.info(SCOPE, `_writePointerFiles("${harness.id}") — all 6 pointer files written (Claude Code, Copilot, Cursor, Windsurf)`);
+      log.info(SCOPE, `_writePointerFiles("${harness.id}") — ${fileCount} pointer file(s) written across ${targets.length} tool(s): [${targets.map(t => t.label).join(', ')}]`);
     } catch (e) {
       log.error(SCOPE, `_writePointerFiles("${harness.id}") failed`, e);
       vscode.window.showWarningMessage(`Harness installed but could not write AI config files: ${e instanceof Error ? e.message : e}`);
@@ -604,6 +687,7 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
     log.info(SCOPE, `_importHarness — setting activeHarnessId to "${id}"`);
     await vscode.workspace.getConfiguration('harnessManager').update('activeHarnessId', id, vscode.ConfigurationTarget.Global);
     this._activeHarnessId = id;
+    this._updateStatusBar();
 
     const installedIds = this._getInstalledIds();
     const starredIds   = this._getStarred();
@@ -717,6 +801,7 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
     log.info(SCOPE, `_restoreBackup — setting activeHarnessId to "${harnessId}"`);
     await vscode.workspace.getConfiguration('harnessManager').update('activeHarnessId', harnessId, vscode.ConfigurationTarget.Global);
     this._activeHarnessId = harnessId;
+    this._updateStatusBar();
 
     // Update AI pointer files to reflect the restored harness content
     const harness = this._harnesses.find(h => h.id === harnessId);
@@ -792,6 +877,7 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
       log.info(SCOPE, `_removeHarness("${id}") — was active; clearing activeHarnessId and pointer files`);
       await vscode.workspace.getConfiguration('harnessManager').update('activeHarnessId', undefined, vscode.ConfigurationTarget.Global);
       this._activeHarnessId = undefined;
+      this._updateStatusBar();
       this._clearPointerFiles(wsRoot);
     } else {
       log.debug(SCOPE, `_removeHarness("${id}") — was not active (active="${this._activeHarnessId}"), pointer files unchanged`);
@@ -807,23 +893,24 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
   private _clearPointerFiles(wsRoot: string): void {
     const log = Logger.instance;
     const placeholder = `# No Active Harness\n\nInstall a harness from the Harness Manager sidebar to get started.\n`;
-    const mdcPlaceholder = `---\ndescription: No active harness\nalwaysApply: false\n---\n\n${placeholder}`;
-    const files: [string, string][] = [
-      [path.join(wsRoot, '.claude', 'CLAUDE.md'), placeholder],
-      [path.join(wsRoot, '.claude', 'active-harness.md'), placeholder],
-      [path.join(wsRoot, '.github', 'copilot-instructions.md'), placeholder],
-      [path.join(wsRoot, '.cursorrules'), placeholder],
-      [path.join(wsRoot, '.cursor', 'rules', 'harness.mdc'), mdcPlaceholder],
-      [path.join(wsRoot, '.windsurfrules'), placeholder],
-      [path.join(wsRoot, '.windsurf', 'rules', 'harness.md'), placeholder],
-    ];
-    for (const [p, content] of files) {
-      try {
-        fs.mkdirSync(path.dirname(p), { recursive: true });
-        fs.writeFileSync(p, content, 'utf8');
-        log.debug(SCOPE, `_clearPointerFiles: wrote ${p}`);
-      } catch (e) {
-        log.warn(SCOPE, `_clearPointerFiles: failed to write ${p}`, e instanceof Error ? e.message : e);
+    const enabledIds = vscode.workspace.getConfiguration('harnessManager').get<string[]>('pointerTargets');
+    const targets = getEnabledTargets(enabledIds);
+    for (const target of targets) {
+      for (const file of target.files) {
+        const p = path.join(wsRoot, ...file.relPath.split('/'));
+        // Only reset files that actually exist — don't scatter placeholders for
+        // tools the user never installed into.
+        if (!fs.existsSync(p)) { continue; }
+        const content = file.wrap
+          ? file.wrap(placeholder, { name: '', placeholder: true })
+          : placeholder;
+        try {
+          fs.mkdirSync(path.dirname(p), { recursive: true });
+          fs.writeFileSync(p, content, 'utf8');
+          log.debug(SCOPE, `_clearPointerFiles: wrote ${p}`);
+        } catch (e) {
+          log.warn(SCOPE, `_clearPointerFiles: failed to write ${p}`, e instanceof Error ? e.message : e);
+        }
       }
     }
   }

@@ -2,7 +2,7 @@
   "name": "harness-manager",
   "displayName": "Harness Manager",
   "description": "Install and manage AI agent harnesses for VS Code, Cursor, and Windsurf. Instantly configures Claude Code, GitHub Copilot, Cursor, and Windsurf with the right instructions for your workflow.",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "publisher": "AdmiralGallade",
   "author": {
     "name": "Harness Team"
@@ -49,6 +49,8 @@
     "onCommand:harness-manager.createHarness",
     "onCommand:harness-manager.switchRepo",
     "onCommand:harness-manager.openSettings",
+    "onCommand:harness-manager.syncPointerFiles",
+    "onCommand:harness-manager.cleanPointerFiles",
     "onView:harness-manager.harnessExplorer"
   ],
   "main": "./dist/extension.js",
@@ -80,6 +82,18 @@
         "title": "Open Harness Manager Settings",
         "category": "Harness Manager",
         "icon": "$(settings-gear)"
+      },
+      {
+        "command": "harness-manager.syncPointerFiles",
+        "title": "Sync AI Instruction Files from Active Harness",
+        "category": "Harness Manager",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "harness-manager.cleanPointerFiles",
+        "title": "Reset AI Instruction Files (Clear Active Harness)",
+        "category": "Harness Manager",
+        "icon": "$(clear-all)"
       }
     ],
     "views": {
@@ -108,9 +122,14 @@
           "group": "navigation@1"
         },
         {
-          "command": "harness-manager.openSettings",
+          "command": "harness-manager.syncPointerFiles",
           "when": "view == harness-manager.harnessExplorer",
           "group": "navigation@2"
+        },
+        {
+          "command": "harness-manager.openSettings",
+          "when": "view == harness-manager.harnessExplorer",
+          "group": "navigation@3"
         }
       ]
     },
@@ -150,6 +169,50 @@
           "type": "boolean",
           "default": false,
           "description": "When enabled, installing a harness will not remove other installed harnesses. All installed harnesses coexist in agent-harnesses/."
+        },
+        "harnessManager.pointerTargets": {
+          "type": "array",
+          "default": [
+            "agents",
+            "claude",
+            "copilot",
+            "cursor",
+            "windsurf",
+            "cline",
+            "roo",
+            "gemini",
+            "aider",
+            "junie"
+          ],
+          "items": {
+            "type": "string",
+            "enum": [
+              "agents",
+              "claude",
+              "copilot",
+              "cursor",
+              "windsurf",
+              "cline",
+              "roo",
+              "gemini",
+              "aider",
+              "junie"
+            ],
+            "enumDescriptions": [
+              "AGENTS.md — cross-tool standard read by most modern agents",
+              "Claude Code — .claude/CLAUDE.md and .claude/active-harness.md",
+              "GitHub Copilot — .github/copilot-instructions.md",
+              "Cursor — .cursorrules and .cursor/rules/harness.mdc",
+              "Windsurf — .windsurfrules and .windsurf/rules/harness.md",
+              "Cline — .clinerules",
+              "Roo Code — .roo/rules/harness.md",
+              "Gemini CLI — GEMINI.md",
+              "Aider — CONVENTIONS.md",
+              "JetBrains Junie — .junie/guidelines.md"
+            ]
+          },
+          "uniqueItems": true,
+          "markdownDescription": "Which AI tools to generate instruction/pointer files for when a harness is installed or synced. Leave empty to write files for every supported tool."
         }
       }
     }

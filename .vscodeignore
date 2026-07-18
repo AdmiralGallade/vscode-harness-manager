@@ -8,10 +8,14 @@ scripts/**
 .gitignore
 .yarnrc
 *.map
+**/*.map
 *.ts
 !*.d.ts
+.claude/**
+RELEASE_DRAFT.md
 node_modules/**
 *.vsix
+*.zip
 .eslintignore
 .prettierignore
 **/.eslintrc.json

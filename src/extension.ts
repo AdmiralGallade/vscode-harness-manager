@@ -77,12 +77,33 @@ export function activate(context: vscode.ExtensionContext) {
         return vscode.commands.executeCommand('workbench.action.openSettings', 'harnessManager');
       },
     },
+    {
+      id: 'harness-manager.syncPointerFiles',
+      handler: () => {
+        log.info(SCOPE, 'Command: syncPointerFiles');
+        return sidebarProvider.syncActiveHarness();
+      },
+    },
+    {
+      id: 'harness-manager.cleanPointerFiles',
+      handler: () => {
+        log.info(SCOPE, 'Command: cleanPointerFiles');
+        return sidebarProvider.cleanPointerFilesCommand();
+      },
+    },
   ];
 
   for (const { id, handler } of commands) {
     context.subscriptions.push(vscode.commands.registerCommand(id, handler));
     log.debug(SCOPE, `Registered command: ${id}`);
   }
+
+  // Status bar item reflecting the active harness; click opens the sidebar.
+  const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  statusBar.command = 'harness-manager.harnessExplorer.focus';
+  context.subscriptions.push(statusBar);
+  sidebarProvider.setStatusBar(statusBar);
+  log.debug(SCOPE, 'Status bar item created');
 
   vscode.workspace.onDidChangeConfiguration((e) => {
     if (e.affectsConfiguration('harnessManager')) {
