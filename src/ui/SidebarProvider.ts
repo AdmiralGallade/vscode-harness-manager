@@ -965,8 +965,9 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
 <body>
 
 <div class="toolbar">
+    <input id="search" type="search" placeholder="Search harnesses…" oninput="onSearch()" />
     <div class="repo-info" id="repoInfo">Repository: <span class="repo-value">AdmiralGallade/harness-repository@main</span></div>
-  <button title="Refresh list" onclick="refresh()">↻</button>
+    <button title="Refresh list" onclick="refresh()">↻</button>
 </div>
 
 <div class="section" id="activeSection" style="display:none">
@@ -1069,7 +1070,8 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
 
   /* ── Search ── */
   function onSearch() {
-    const q = document.getElementById('search').value.toLowerCase().trim();
+    const searchInput = document.getElementById('search');
+    const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
     // In focus mode, search only within starred harnesses
     const pool = focusMode ? allHarnesses.filter(h => starredIds.includes(h.id)) : allHarnesses;
     // Installed harnesses go in Active section; starred (non-installed) go in Starred section
