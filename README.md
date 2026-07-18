@@ -25,7 +25,7 @@ A lightweight VS Code, Cursor and Windsurf extension for installing and managing
 
 You can publish your own harness repository or upload harnesses here:
 
-https://github.com/AdmiralGallade?tab=repositories
+https://github.com/AdmiralGallade/harness-repository
 
 ## Create a new harness scaffold
 
