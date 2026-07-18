@@ -11,14 +11,21 @@ jest.mock('vscode', () => ({
     showQuickPick: jest.fn(),
     showInputBox: jest.fn(),
     withProgress: jest.fn(async (options, task) => task()),
+    createOutputChannel: jest.fn(() => ({
+      appendLine: jest.fn(),
+      show: jest.fn(),
+      dispose: jest.fn(),
+    })),
     createWebviewPanel: jest.fn(),
     createTreeView: jest.fn(),
+    showTextDocument: jest.fn(async () => ({})),
   },
   workspace: {
     getConfiguration: jest.fn(() => ({
       get: jest.fn((key, defaultValue) => defaultValue),
     })),
     workspaceFolders: [],
+    openTextDocument: jest.fn(async () => ({})),
     onDidChangeConfiguration: jest.fn(() => ({
       dispose: jest.fn(),
     })),
@@ -26,6 +33,9 @@ jest.mock('vscode', () => ({
   commands: {
     registerCommand: jest.fn(() => ({ dispose: jest.fn() })),
     executeCommand: jest.fn(),
+  },
+  ConfigurationTarget: {
+    Global: 1,
   },
   Uri: {
     file: (path: string) => ({ fsPath: path }),

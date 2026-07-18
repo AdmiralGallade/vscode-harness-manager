@@ -635,16 +635,19 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
   private async _addFromGithub(url: string): Promise<void> {
     const log = Logger.instance;
     log.info(SCOPE, `_addFromGithub("${url}")`);
-    const match = url.match(/github\.com\/([^/]+)\/([^/?#]+)/);
-    if (!match) {
+    const parsed = GitHubService.parseRepoIdentifier(url);
+    if (!parsed) {
       log.warn(SCOPE, `_addFromGithub — invalid URL: "${url}"`);
-      vscode.window.showErrorMessage('Invalid GitHub URL. Expected: https://github.com/owner/repo');
+      vscode.window.showErrorMessage('Invalid GitHub URL. Expected owner/repo or a GitHub repo URL.');
       return;
     }
-    const [, owner, repo] = match;
-    log.info(SCOPE, `Switching githubRepo setting to "${owner}/${repo}"`);
-    await vscode.workspace.getConfiguration('harnessManager').update('githubRepo', `${owner}/${repo}`, vscode.ConfigurationTarget.Global);
-    vscode.window.showInformationMessage(`Switched harness repository to ${owner}/${repo}`);
+    log.info(SCOPE, `Switching githubRepo setting to "${parsed.owner}/${parsed.repo}${parsed.branch ? `@${parsed.branch}` : ''}"`);
+    const cfg = vscode.workspace.getConfiguration('harnessManager');
+    await cfg.update('githubRepo', `${parsed.owner}/${parsed.repo}`, vscode.ConfigurationTarget.Global);
+    if (parsed.branch) {
+      await cfg.update('githubBranch', parsed.branch, vscode.ConfigurationTarget.Global);
+    }
+    vscode.window.showInformationMessage(`Switched harness repository to ${parsed.owner}/${parsed.repo}${parsed.branch ? `@${parsed.branch}` : ''}`);
     await this._loadAndSend(true);
   }
 
@@ -962,7 +965,7 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
 <body>
 
 <div class="toolbar">
-  <input id="search" type="text" placeholder="Search harnesses…" oninput="onSearch()"/>
+    <div class="repo-info" id="repoInfo">Repository: <span class="repo-value">AdmiralGallade/harness-repository@main</span></div>
   <button title="Refresh list" onclick="refresh()">↻</button>
 </div>
 
@@ -1379,6 +1382,12 @@ export class HarnessSidebarProvider implements vscode.WebviewViewProvider {
         activeId = msg.activeId || null;
         installedIds = msg.installedIds || [];
         starredIds = msg.starredIds || [];
+        if (msg.repoInfo) {
+          const repoEl = document.getElementById('repoInfo');
+          if (repoEl) {
+            repoEl.innerHTML = 'Repository: <span class="repo-value">' + esc(msg.repoInfo.owner) + '/' + esc(msg.repoInfo.repo) + '@' + esc(msg.repoInfo.branch) + '</span>';
+          }
+        }
         onSearch();
         break;
       case 'error':

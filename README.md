@@ -21,9 +21,21 @@ You can publish your own harness repository or upload harnesses here:
 
 https://github.com/AdmiralGallade?tab=repositories
 
+## Create a new harness scaffold
+
+Use the `Harness Manager: Create Harness Scaffold` command to generate:
+
+- `harnesses/<id>/config.json`
+- `harnesses/<id>/template.yaml`
+- `harnesses/<id>/README.md`
+- `harnesses.json` with a register entry for the scaffold
+
+This helps you publish a new harness repository quickly.
+
 ## Configuration
 
 - `harnessManager.githubRepo` — GitHub repo to load harnesses from (`owner/repo`)
+- `harnessManager.defaultCreateLocation` — `workspace-root` or `prompt` for scaffold and install locations
 - `harnessManager.multiHarnessInstall` — install without removing existing harnesses
 - `harnessManager.cacheRefreshInterval` — cache lifetime in milliseconds
 

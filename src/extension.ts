@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { selectHarnessCommand } from './commands/selectHarness';
 import { refreshHarnessesCommand } from './commands/refreshHarnesses';
+import { createHarnessCommand } from './commands/createHarness';
+import { switchRepoCommand } from './commands/switchRepo';
 import { GitHubService } from './services/GitHubService';
 import { CacheManager } from './services/CacheManager';
 import { FileSystemManager } from './services/FileSystemManager';
@@ -50,6 +52,21 @@ export function activate(context: vscode.ExtensionContext) {
       handler: () => {
         log.info(SCOPE, 'Command: refreshList');
         refreshHarnessesCommand(githubService, cacheManager);
+        sidebarProvider.refresh();
+      },
+    },
+    {
+      id: 'harness-manager.createHarness',
+      handler: () => {
+        log.info(SCOPE, 'Command: createHarness');
+        return createHarnessCommand(fileSystemManager);
+      },
+    },
+    {
+      id: 'harness-manager.switchRepo',
+      handler: async () => {
+        log.info(SCOPE, 'Command: switchRepo');
+        await switchRepoCommand(githubService, cacheManager);
         sidebarProvider.refresh();
       },
     },

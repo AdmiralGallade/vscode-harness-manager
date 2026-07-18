@@ -19,13 +19,52 @@ export class GitHubService {
     this.initializeRepoConfig();
   }
 
+  static parseRepoIdentifier(input: string): { owner: string; repo: string; branch?: string } | null {
+    const value = input.trim();
+    const normalized = value.replace(/\.git$/i, '');
+
+    const urlMatch = normalized.match(new RegExp(
+      '^(?:https?://)?(?:www\\.)?github\\.com/([^/\\s]+)/([^/@#\\s]+)(?:[@#]([^/\\s]+)|/tree/([^/\\s]+))?',
+      'i'
+    ));
+    if (urlMatch) {
+      return {
+        owner: urlMatch[1],
+        repo: urlMatch[2],
+        branch: urlMatch[3] || urlMatch[4],
+      };
+    }
+
+    const ownerRepoMatch = normalized.match(/^([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)(?:[@#]([a-zA-Z0-9_.-]+))?$/);
+    if (ownerRepoMatch) {
+      return {
+        owner: ownerRepoMatch[1],
+        repo: ownerRepoMatch[2],
+        branch: ownerRepoMatch[3],
+      };
+    }
+
+    return null;
+  }
+
   private initializeRepoConfig(): void {
     const log = Logger.instance;
-    const repoConfig = vscode.workspace.getConfiguration('harnessManager')
-      .get<string>('githubRepo', 'AdmiralGallade/harness-repository');
-    const parts = repoConfig.split('/');
-    this.owner = parts[0] ?? '';
-    this.repo  = parts[1] ?? '';
+    const config = vscode.workspace.getConfiguration('harnessManager');
+    const repoConfig = config.get<string>('githubRepo', 'AdmiralGallade/harness-repository');
+    const branchConfig = config.get<string>('githubBranch', 'main');
+    const parsed = GitHubService.parseRepoIdentifier(repoConfig);
+
+    if (parsed) {
+      this.owner = parsed.owner;
+      this.repo = parsed.repo;
+      this.branch = parsed.branch || branchConfig;
+    } else {
+      const parts = repoConfig.split('/');
+      this.owner = parts[0] ?? '';
+      this.repo = parts[1] ?? '';
+      this.branch = branchConfig;
+    }
+
     if (!this.owner || !this.repo) {
       log.error(SCOPE, `Invalid githubRepo setting — expected "owner/repo", got "${repoConfig}"`);
     } else {
@@ -150,14 +189,17 @@ export class GitHubService {
     }
   }
 
-  updateRepoConfig(owner: string, repo: string): void {
-    Logger.instance.info(SCOPE, `updateRepoConfig: ${owner}/${repo}`);
+  updateRepoConfig(owner: string, repo: string, branch?: string): void {
+    Logger.instance.info(SCOPE, `updateRepoConfig: ${owner}/${repo}${branch ? `@${branch}` : ''}`);
     this.owner = owner;
-    this.repo  = repo;
+    this.repo = repo;
+    if (branch) {
+      this.branch = branch;
+    }
   }
 
-  getCurrentRepo(): { owner: string; repo: string } {
-    return { owner: this.owner, repo: this.repo };
+  getCurrentRepo(): { owner: string; repo: string; branch: string } {
+    return { owner: this.owner, repo: this.repo, branch: this.branch };
   }
 
   async clearCache(): Promise<void> {

@@ -44,7 +44,12 @@
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onCommand:harness-manager.selectHarness",
+    "onCommand:harness-manager.refreshList",
+    "onCommand:harness-manager.createHarness",
+    "onCommand:harness-manager.switchRepo",
+    "onCommand:harness-manager.openSettings",
+    "onView:harness-manager.harnessExplorer"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -59,6 +64,16 @@
         "title": "Refresh Harness List",
         "category": "Harness Manager",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "harness-manager.createHarness",
+        "title": "Create Harness Scaffold",
+        "category": "Harness Manager"
+      },
+      {
+        "command": "harness-manager.switchRepo",
+        "title": "Switch Harness Repository",
+        "category": "Harness Manager"
       },
       {
         "command": "harness-manager.openSettings",
@@ -111,6 +126,11 @@
           "type": "number",
           "default": 86400000,
           "description": "Cache refresh interval in milliseconds (default: 24 hours)"
+        },
+        "harnessManager.githubBranch": {
+          "type": "string",
+          "default": "main",
+          "description": "GitHub branch to use when fetching harness files"
         },
         "harnessManager.defaultCreateLocation": {
           "type": "string",
