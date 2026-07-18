@@ -1,5 +1,8 @@
 # Harness Manager
 
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/AdmiralGallade.harness-manager?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=AdmiralGallade.harness-manager)
+[![Open VSX](https://img.shields.io/open-vsx/v/AdmiralGallade/harness-manager?label=Open%20VSX)](https://open-vsx.org/extension/AdmiralGallade/harness-manager)
+
 A lightweight VS Code, Cursor and Windsurf extension for installing and managing AI agent harnesses.
 
 ## Why use this
@@ -66,8 +69,9 @@ A harness is a collection of files (prompts, rules, hooks, skills) that tells yo
 ## Compatible editors
 
 - **VS Code** — install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=AdmiralGallade.harness-manager)
-- **Cursor** — install directly via `.vsix`
-- **Windsurf** — install directly via `.vsix`
+- **Cursor, Windsurf, VSCodium & other VS Code forks** — install from [Open VSX](https://open-vsx.org/extension/AdmiralGallade/harness-manager), or side-load the `.vsix`
+
+Also available on the [Open VSX Registry](https://open-vsx.org/extension/AdmiralGallade/harness-manager).
 
 ---
 
